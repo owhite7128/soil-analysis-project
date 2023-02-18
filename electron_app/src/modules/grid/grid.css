@@ -1,0 +1,12 @@
+.grid_full {
+    display: grid;
+}
+
+.grid_item {
+    border: 2px solid #000000;
+    margin: 10px;
+    background-color: #ffffff;
+}
+.grid_item:hover {
+    background-color: #00aaff;
+}

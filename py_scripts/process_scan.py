@@ -43,7 +43,7 @@ while(cap.isOpened()):
         approx = cv.approxPolyDP(big_contour, 0.01* cv.arcLength(big_contour, True), True)
         cv.drawContours(frame, [approx], 0, (0, 0, 0), 5)
         x, y, w, h = cv.boundingRect(approx)
-        n = 1
+        n = 10
 
         rect_pts = [[0 for x in range(n)] for y in range(n)] 
 

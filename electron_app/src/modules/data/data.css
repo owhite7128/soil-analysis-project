@@ -1,0 +1,8 @@
+.data {
+    position: relative;
+    width: 150px;
+    padding: 1em 0em;
+    background: #0000ff;
+    color: #ffa500;
+    border-radius: 4px;
+}
