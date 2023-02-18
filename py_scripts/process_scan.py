@@ -46,7 +46,6 @@ while(cap.isOpened()):
         n = 10
 
         rect_pts = [[0 for x in range(n)] for y in range(n)] 
-
         for i in range(n):
             for j in range(n):
                 sp_x = int(x+i*(w/n))
@@ -56,8 +55,52 @@ while(cap.isOpened()):
                 sp = (sp_x, sp_y)
                 ep = (ep_x, ep_y)
                 rect_pts[i][j] = [sp,ep]
-                color = (0, 255, 0)
-                frame = cv.rectangle(frame, sp, ep, color, 2)
+
+        # This is where the code to prune rects goes. Check every pt on rect, if a single on returns that it is outside of contour, get
+        # rid of that rectangle and move to next.
+        # u = ((bs.y - as.y) * bd.x - (bs.x - as.x) * bd.y) / (bd.x * ad.y - bd.y * ad.x)
+        # v = ((bs.y - as.y) * ad.x - (bs.x - as.x) * ad.y) / (bd.x * ad.y - bd.y * ad.x)
+
+        for i in range(n):
+            for j in range(n):
+              in_bound = 1
+              pt_avg = ((rect_pts[i][j][0][0]+rect_pts[i][j][1][0])/2, (rect_pts[i][j][0][1]+rect_pts[i][j][1][1])/2)
+              pt_avg_cross = 0
+
+              for k in range(len(approx)):
+                if in_bound:
+                  if k+1 < len(approx):
+                    r_Base = (approx[k][0][0], approx[k][0][1])
+                    r_Ray = (approx[k+1][0][0] - approx[k][0][0], approx[k+1][0][1] - approx[k][0][1])
+                  else:
+                    #r_Base = (approx[k][0][0], approx[k][0][1])
+                    #r_Ray = (approx[0][0][0] - approx[k][0][0], approx[0][0][1] - approx[k][0][1])
+                    r_Base = (approx[0][0][0], approx[0][0][1])
+                    r_Ray = (approx[k][0][0] - approx[0][0][0], approx[k][0][1] - approx[0][0][1])
+
+                  if ((r_Ray[0]*0 - r_Ray[1]*1) != 0 ):
+                    u_avg = (((r_Base[1]-pt_avg[1])*r_Ray[0]-(r_Base[0]-pt_avg[0])*r_Ray[1])/(r_Ray[0]*0 - r_Ray[1]*1))
+                    v_avg = (((r_Base[1]-pt_avg[1])*1-(r_Base[0]-pt_avg[0])*0)/(r_Ray[0]*0 - r_Ray[1]*1))
+                    if (u_avg >= 0 and v_avg >= 0):
+                      pt_avg_cross += 1
+              #weirded out...
+              if ((pt_avg_cross % 2) != 0):
+                in_bound = 0
+              else: 
+                in_bound = 1
+              
+              if not in_bound:
+                rect_pts[i][j][0] = (-1,-1)
+                rect_pts[i][j][1] = (-1,-1)
+
+
+        color = (0, 255, 0)
+        for i in range(n):
+            for j in range(n):
+              if rect_pts[i][j][0][0] != -1 and rect_pts[i][j][0][1] != -1 and rect_pts[i][j][1][0] != -1 and rect_pts[i][j][1][1] != -1:
+                frame = cv.rectangle(frame, rect_pts[i][j][0], rect_pts[i][j][1], color, 2)
+
+
 
     
     #print(rect_pts[1][3])
