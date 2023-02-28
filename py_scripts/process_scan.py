@@ -2,7 +2,12 @@ import cv2 as cv
 import numpy as np
 
 cap = cv.VideoCapture(0)
-cap.set(cv.CAP_PROP_SETTINGS, 1)
+cap.set(cv.CAP_PROP_AUTOFOCUS, 1)
+cap.set(cv.CAP_PROP_FOCUS, 255)
+
+arucoDict = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_ARUCO_ORIGINAL)
+arucoParams =  cv.aruco.DetectorParameters()
+detector = cv.aruco.ArucoDetector(arucoDict, arucoParams)
 
 # Check if camera opened successfully
 if (cap.isOpened()== False): 
@@ -13,6 +18,7 @@ while(cap.isOpened()):
   # Capture frame-by-frame
   ret, frame = cap.read()
   if ret == True:
+    (corners, ids, rejected) = detector.detectMarkers(frame)
     blurred = cv.medianBlur(frame, 7)
     hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
     
@@ -30,6 +36,34 @@ while(cap.isOpened()):
 
     large_area = 0
     big_contour = 0
+    
+    if len(corners) > 0:
+      # flatten the ArUco IDs list
+      ids = ids.flatten()
+      # loop over the detected ArUCo corners
+      for (markerCorner, markerID) in zip(corners, ids):
+        # extract the marker corners (which are always returned in
+        # top-left, top-right, bottom-right, and bottom-left order)
+        corners = markerCorner.reshape((4, 2))
+        (topLeft, topRight, bottomRight, bottomLeft) = corners
+        # convert each of the (x, y)-coordinate pairs to integers
+        topRight = (int(topRight[0]), int(topRight[1]))
+        bottomRight = (int(bottomRight[0]), int(bottomRight[1]))
+        bottomLeft = (int(bottomLeft[0]), int(bottomLeft[1]))
+        topLeft = (int(topLeft[0]), int(topLeft[1]))
+
+        # draw the bounding box of the ArUCo detection
+        cv.line(frame, topLeft, topRight, (0, 255, 0), 2)
+        cv.line(frame, topRight, bottomRight, (0, 255, 0), 2)
+        cv.line(frame, bottomRight, bottomLeft, (0, 255, 0), 2)
+        cv.line(frame, bottomLeft, topLeft, (0, 255, 0), 2)
+        # compute and draw the center (x, y)-coordinates of the ArUco
+        # marker
+        cX = int((topLeft[0] + bottomRight[0]) / 2.0)
+        cY = int((topLeft[1] + bottomRight[1]) / 2.0)
+        cv.circle(frame, (cX, cY), 4, (0, 0, 255), -1)
+        # draw the ArUco marker ID on the image
+        cv.putText(frame, str(markerID), (topLeft[0], topLeft[1] - 15), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
     for contour in contours:
         approx = cv.approxPolyDP(contour, 0.01* cv.arcLength(contour, True), True)
@@ -43,7 +77,7 @@ while(cap.isOpened()):
         approx = cv.approxPolyDP(big_contour, 0.01* cv.arcLength(big_contour, True), True)
         cv.drawContours(frame, [approx], 0, (0, 0, 0), 5)
         x, y, w, h = cv.boundingRect(approx)
-        n = 4
+        n = 7
 
         rect_pts = [[0 for x in range(n)] for y in range(n)] 
         for i in range(n):
@@ -106,6 +140,7 @@ while(cap.isOpened()):
     #print(rect_pts[1][3])
     # Display the resulting frame
     cv.imshow('frame', frame)
+    cv.imshow('canny', canny_gray)
  
     # Press Q on keyboard to  exit
     if cv.waitKey(25) & 0xFF == ord('q'):
