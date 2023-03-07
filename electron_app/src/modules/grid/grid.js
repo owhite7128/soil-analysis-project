@@ -10,6 +10,7 @@ function GenerateGrid (props) {
     for (let i=0;i<props.n; i++) {
         for (let j=0; j<props.n; j++){
             let gridProps = {
+                key: i*props.n + j,
                 i:i,
                 j:j,
                 w:props.width / props.n,
@@ -38,7 +39,7 @@ function mapGrid(grid) {
 }
 
 function newGridItem (gridProps) {
-    return <GridItem a={gridProps.j} b={gridProps.i} width={gridProps.w} height={gridProps.h}>{gridProps.data}</GridItem>
+    return <GridItem key={gridProps.key} a={gridProps.j} b={gridProps.i} width={gridProps.w} height={gridProps.h}>{gridProps.data}</GridItem>
 }
 
 function GridItem (props) {
