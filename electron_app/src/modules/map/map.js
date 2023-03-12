@@ -4,13 +4,13 @@ import React from 'react'
 import GenerateGrid from '../grid/grid';
 import './map.css'
 
-function Map() {
+function Map(props) {
     const w = 300;
     const h = 300;
     const n = 8;
     return (
         <div className='map'>
-            <GenerateGrid n={n} width={w} height={h} className="map_grid"></GenerateGrid>
+            <GenerateGrid scan_id={props.scan_id} n={n} width={w} height={h} className="map_grid"></GenerateGrid>
         </div>
     )
 }

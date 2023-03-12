@@ -4,9 +4,11 @@
 
 .grid_item {
     border: 2px solid #000000;
-    margin: 10px;
-    background-color: #ffffff;
+    margin: 0px;
+    transition: 0ms;
 }
 .grid_item:hover {
-    background-color: #00aaff;
+    transition: 0ms;
+    text-align: center;
+    background-color: rgba(0, 170, 255, 0.75);
 }
