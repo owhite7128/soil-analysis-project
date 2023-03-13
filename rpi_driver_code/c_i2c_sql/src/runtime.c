@@ -22,7 +22,7 @@ unsigned int ret_code = 0;
 // Linked List For Samples, to form full scan.
 
 
-float i2c_get_sample (,int *code) 
+float i2c_get_sample (int *code) 
 {
 
 }
@@ -40,12 +40,14 @@ SCAN* complete_scan (int *code)
         if (bcm2835_gpio_eds (TAKE_READING))
         {
             bcm2835_gpio_set_eds (TAKE_READING);
-            float ret = i2c_get_sample ( , code);
+            float ret = i2c_get_sample (code);
             if (code)
             {
-                // Get X and Y Pos and add to node
-                scan_add (head, ret);
+                
                 fprintf (stderr, "Error: Read From i2c failed.\n");
+            } else {
+                // Get X and Y Pos and add to node
+                scan_add (head, X_VALUE, Y_VALUE, ret);
             }
 
         }
@@ -73,14 +75,14 @@ int main (int argc, char** argv)
         fprintf (stderr, "\nError: BCM2835 INIT Failure\n(Are You Running As Root?)\n");
         return 1;
     }
-    // Set RPI pin P1-15 to be an input
+
+
     bcm2835_gpio_fsel(START_END_SCAN, BCM2835_GPIO_FSEL_INPT);
     //  with a pullup
     bcm2835_gpio_set_pud(START_END_SCAN, BCM2835_GPIO_PUD_UP);
     // And a low detect enable
     bcm2835_gpio_len(START_END_SCAN);
 
-    // Set RPI pin P1-15 to be an input
     bcm2835_gpio_fsel(TAKE_READING, BCM2835_GPIO_FSEL_INPT);
     //  with a pullup
     bcm2835_gpio_set_pud(TAKE_READING, BCM2835_GPIO_PUD_UP);

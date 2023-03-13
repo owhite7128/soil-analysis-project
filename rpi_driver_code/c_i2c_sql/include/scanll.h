@@ -4,6 +4,8 @@
 typedef struct scan_node {
     int id;
     float ph;
+    int x;
+    int y;
     struct scan_node* next;    
 } SCAN_NODE;
 
@@ -17,7 +19,7 @@ typedef struct scan {
 
 SCAN* scan_create ();
 
-void scan_add (SCAN* inscan, float inph);
+void scan_add (SCAN* inscan, int inx, int iny, float inph);
 
 void scan_remove_id (SCAN* inscan, int id);
 

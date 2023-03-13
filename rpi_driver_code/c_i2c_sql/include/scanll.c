@@ -10,13 +10,15 @@ SCAN* scan_create ()
     return new_scan;
 }
 
-void scan_add (SCAN* inscan, float inph)
+void scan_add (SCAN* inscan, int inx, int iny, float inph)
 {
     if (inscan->head) {
         SCAN_NODE* new_node = (SCAN_NODE*) malloc (1*sizeof(SCAN_NODE));
         new_node->id = inscan->curr_id;
         new_node->ph = inph;
         new_node->next = NULL;
+        new_node->x = inx;
+        new_node->y = iny;
         inscan->tail->next = new_node;
         inscan->tail = new_node;
         inscan->curr_id++;
@@ -25,6 +27,9 @@ void scan_add (SCAN* inscan, float inph)
         SCAN_NODE* new_node = (SCAN_NODE*) malloc (1*sizeof(SCAN_NODE));
         new_node->id = inscan->length;
         new_node->ph = inph;
+        new_node->next = NULL;
+        new_node->x = inx;
+        new_node->y = iny;
         inscan->head = new_node;
         inscan->tail = new_node;
         inscan->curr_id++;
@@ -35,15 +40,32 @@ void scan_add (SCAN* inscan, float inph)
 void scan_remove_id (SCAN* inscan, int id)
 {
     SCAN_NODE* curr = inscan->head;
+    SCAN_NODE* prev = NULL;
+
+    if (curr->id == id)
+    {
+        if (!curr->next) {
+            inscan->head = NULL;
+            inscan->tail = NULL;
+        }
+        free(curr);
+        inscan->length--;
+        return;
+    } 
     while (curr)
     {
-        if (curr->next->id == id) {
-            SCAN_NODE* temp = curr->next->next;
-            free(curr->next);
-            curr->next = temp;
+        if (curr->id == id)
+        {
+            SCAN_NODE* temp = curr->next;
+            free(curr);
+            prev = temp;
             inscan->length--;
-            break;
+            if (!temp) {
+                inscan->tail = prev;
+            }
+            return;
         }
+        prev = curr;
         curr = curr->next;
     }
 }
