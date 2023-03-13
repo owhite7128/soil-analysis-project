@@ -34,7 +34,7 @@ echo "Created Logfile\n"
 # Configuring Apache2 to use WSGI
 cd /etc/apache2/sites-available
 sudo touch sql_expose.conf
-sql_expose.conf < echo '<VirtualHost *:80>\n\tServerName: sql_expose.com\n\tServerAlias: sql_expose.com\n\tWSGIDaemonProcess sql_expose threads=5\n\tWSGIScriptAlias / /var/www/sql_expose/sql_expose.wsgi\n\t<Directory /var/www/sql_expose>\n\t\tWSGIProcessGroup sql_expose\n\t\tWSGIApplicationGroup %{GLOBAL}\n\t\tRequire all granted\n\t</Directory>\n</VirtualHost>'
+echo '<VirtualHost *:80>\n\tServerName: sql_expose.com\n\tServerAlias: sql_expose.com\n\tWSGIDaemonProcess sql_expose threads=5\n\tWSGIScriptAlias / /var/www/sql_expose/sql_expose.wsgi\n\t<Directory /var/www/sql_expose>\n\t\tWSGIProcessGroup sql_expose\n\t\tWSGIApplicationGroup %{GLOBAL}\n\t\tRequire all granted\n\t</Directory>\n</VirtualHost>' > sql_expose.conf
 echo "Configured Apache2 File for WSGI\n"
 
 # Enable Site
