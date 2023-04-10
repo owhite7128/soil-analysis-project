@@ -1,6 +1,7 @@
 #include <bcm2835.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <mysql/mysql.h>
 #include "../include/scanll.h"
 
@@ -32,19 +33,22 @@ unsigned int ret_code = 0;
 
 unsigned float i2c_get_sample (int *code) 
 {
+    // Probably Should Pull Some Line High, In Order to have a BUSY LED, which lets User know when measurement is in progress.
+
+
     // Return Codes For Func.
     // 0 = Everything Worked Correctly
-    // 1 = Write Fail
-    // 2 = TIMEOUT
     // 3 = Read Fail
-    // 4 = Incorrect Parity
-    // 5 = Incorrect ERRCHK Values.
+    // 6 = Ardiuno Failed Read from pH Sensor, everything else worked fine.
 
+
+    // Unneccessary
+    /*
     // GET = HEXCODE FOR GET COMMAND
     // ERRCHK1 = 8BIT RNDM NUM to be Returned
     // ERRCHK2 = BITNOT ERRCHK1 also to be returned.
     // PARITY = 1 if overall sum odd, 0 if overall sum even.
-    // {0x00 0x00 0x00 0x00}
+    // {0x00 0x00 0x00 0x00} = Len 4.
     *code = 0;
     len = 4;
     uint8_t get = ___;
@@ -80,7 +84,8 @@ unsigned float i2c_get_sample (int *code)
         }
         delay (100);
         timeout++;
-    }
+    }*/
+
     for (int i=0; i<MAX_LEN; i++)
     {
         rbuf[i] = 'n';
@@ -88,9 +93,6 @@ unsigned float i2c_get_sample (int *code)
 
     // Return should be
     // RETURN = HEXCODE FOR RTN COMMAND
-    // ERRCHK1 = 8BIT RNDM NUM to be Returned
-    // ERRCHK2 = BITNOT ERRCHK1 also to be returned.
-    // PARITY = 1 if overall sum odd, 0 if overall sum even.
     *code = bcm2835_i2c_read (rbuf, 4);
     if (*code == 1)
     {
@@ -98,37 +100,96 @@ unsigned float i2c_get_sample (int *code)
         fprintf (stderr, "\nError: Read from I2C Device Failed. (CODE: %d)\n", *code);
         return 0.0;
     }
-    if ((get + errchk1 + errchk2) % 2 == 1)
+    if (rbuf[0] == (char) 0x00 || rbuf[0] == (char) 0xff)
     {
-        if (rbuf[3] == (char) 0x00)
-        {
-            *code = 4;
-            fprintf (stderr, "\nError: Parity Bit Set Incorrectly (SET EVEN WHEN SHOULD BE ODD) (CODE: %d)\n", *code);
-        }
-    } else {
-        if (rbuf[3] == (char) 0x01)
-        {
-            *code = 4;
-            fprintf (stderr, "\nError: Parity Bit Set Incorrectly (SET ODD WHEN SHOULD BE EVEN) (CODE: %d)\n", *code);
-        }
-    } 
-    if (rbuf[2] != (char) errchk1 || rbuf[1] != (char) errchk2)
-    {
-        *code = 5;
-        fprintf (stderr, "\nError: ERRCHK Values are Set Incorrectly. (CODE: %d)\n", *code);
-    }
-    if (*code != 0)
-    {
+        *code = 6;
+        fprintf (stderr, "\nError: Arduino Didn't Read from Sensor Correctly. (CODE: %d)\n", *code);
         return 0.0;
     }
 
+    // Unsure how sensor responds
     unsigned float ret = ((unsigned int)rbuf[0])/10.0;
     return ret;
 }
 
+int verify_frame (MYSQL *conn)
+{
+    mysql_query (conn, "SELECT * FROM `soil-scans` WHERE `phdata`=\"NULL\"");
+    MYSQL_RES* result mysql_store_result (conn);
+
+    if (result != NULL)
+    {
+        return 0;
+    }
+    return 1;
+}
+
 void sql_commit (MYSQL *conn, SCAN* inscan, int *code)
 {
+    mysql_query (conn, "SELECT * FROM `soil-scans` WHERE `phdata`=\"NULL\"");
+    MYSQL_RES* result mysql_store_result (conn);
 
+    if (result == NULL)
+    {
+        *code = 10;
+        return;
+    }
+
+    int num_fields = mysql_num_fields (result);
+    MYSQL_ROW row = mysql_fetch_row (result);
+
+    char ph_data[200] = "";
+    
+    int scan_id = atoi(row[0]);
+    char quaddat[100] = row[3];
+    int quadcoords[8];
+
+    char* tok;
+    int id = 0;
+    tok = strtok (quaddat, ' ');
+    while (tok != NULL)
+    {
+        quadcoords[id] = atoi(tok);
+        id++;
+        tok = strtok (NULL, ' ');
+    }
+
+    int max = 0;
+    int min = 10000000; 
+
+    for (int i=0; i<4; i++)
+    {
+        if (quadcoords[2*i] > max)
+        {
+            max = quadcoords[2*i];
+        }
+        if (quadcoords[2*i] < min)
+        {
+            min = quadcoords[2*i];
+        }
+    }
+
+    int width = max - min;
+    int amnt_squares = width / 50;
+
+    // idx of the form (amnt_square * Y) + X
+    // Sort by this, then just strcat based upon LL
+    // TODO SORT FUNCTION
+
+
+    SCAN_NODE* curr;
+    char buff[50];
+    curr = inscan->head;
+    for (int i=0; i<inscan->length; i++)
+    {
+        sprintf (buff, "%f ", curr->ph);
+        strcat (ph_data, buff);
+        curr = curr->next;
+    }
+
+    char qbuff[200];
+    sprintf (qbuff, "UPDATE `soil-scans` SET `phdata`=\"%s\" WHERE `id`=%d;", ph_data, scan_id);
+    mysql_query (conn , qbuff);
 }
 
 SCAN* complete_scan (int *code)
@@ -136,9 +197,10 @@ SCAN* complete_scan (int *code)
     SCAN* head = scan_create();
     while (!bcm2835_gpio_eds(START_END_SCAN))
     {
+        bcm2835_gpio_set_eds (START_END_SCAN);
         if (bcm2835_gpio_eds (TAKE_READING))
         {
-            bcm2835_gpio_set_eds (TAKE_READING);
+            
             unsigned float ret = i2c_get_sample (code);
             if (code)
             {
@@ -147,7 +209,7 @@ SCAN* complete_scan (int *code)
                 // Get X and Y Pos and add to node
                 scan_add (head, X_VALUE, Y_VALUE, ret);
             }
-
+            bcm2835_gpio_set_eds (TAKE_READING);
         }
     }
     bcm2835_gpio_set_eds(START_END_SCAN);
@@ -186,14 +248,14 @@ int main (int argc, char** argv)
     bcm2835_gpio_fsel(START_END_SCAN, BCM2835_GPIO_FSEL_INPT);
     //  with a pullup
     bcm2835_gpio_set_pud(START_END_SCAN, BCM2835_GPIO_PUD_UP);
-    // And a low detect enable
-    bcm2835_gpio_len(START_END_SCAN);
+    // And a fall edge detect enable
+    bcm2835_gpio_afen(START_END_SCAN);
 
     bcm2835_gpio_fsel(TAKE_READING, BCM2835_GPIO_FSEL_INPT);
     //  with a pullup
     bcm2835_gpio_set_pud(TAKE_READING, BCM2835_GPIO_PUD_UP);
-    // And a low detect enable
-    bcm2835_gpio_len(TAKE_READING);
+    // And a falling edge detect enable
+    bcm2835_gpio_afen(TAKE_READING);
 
     bcm2835_i2c_setSlaveAddress(slave_address);
     bcm2835_i2c_setClockDivider(clk_div);
@@ -204,18 +266,23 @@ int main (int argc, char** argv)
         {
             // Now clear the eds flag by setting it to 1
             bcm2835_gpio_set_eds(START_END_SCAN);
-            printf("low event detect for pin 15\n");
-            SCAN* ret = complete_scan (&ret_code);
-            if (!ret_code)
+            if (verify_frame(conn))
             {
-                sql_commit (conn, ret, &ret_code);
-                if (ret_code)
+                fprintf (stderr, "Error: No SQL Frame Detected, Ignoring Scan Button. Please Create a Frame for the Scan to Bind to.\n");
+            } else {
+
+                SCAN* ret = complete_scan (&ret_code);
+                if (!ret_code)
                 {
-                    fprintf (stderr, "Error: Write to MySQL Failed\n");
+                    sql_commit (conn, ret, &ret_code);
+                    if (ret_code)
+                    {
+                        fprintf (stderr, "Error: Write to MySQL Failed\n");
+                    }
                 }
-            }
-            else {
-                fprintf (stderr, "Error: Scan Failed, Could Be Error with I2C\n");
+                else {
+                    fprintf (stderr, "Error: Scan Failed, Could Be Error with I2C\n");
+                }
             }
         }
  
