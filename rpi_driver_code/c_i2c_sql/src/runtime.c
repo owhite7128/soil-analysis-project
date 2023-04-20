@@ -284,6 +284,7 @@ int main (int argc, char** argv)
                     fprintf (stderr, "Error: Scan Failed, Could Be Error with I2C\n");
                 }
             }
+            bcm2835_gpio_set_eds(START_END_SCAN);
         }
  
         // wait a bit
